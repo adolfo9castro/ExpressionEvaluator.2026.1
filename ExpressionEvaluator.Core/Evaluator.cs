@@ -1,4 +1,8 @@
-﻿namespace ExpressionEvaluator.Core;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+
+namespace ExpressionEvaluator.Core;
 
 public class Evaluator
 {
@@ -8,14 +12,29 @@ public class Evaluator
         return EvaluatePostfix(postfix);
     }
 
-    private static string InfixToPostfix(string infix)
+    private static Queue<string> InfixToPostfix(string infix)
     {
-        var postFix = string.Empty;
+        var postFix = new Queue<string>();
         var stack = new Stack<char>();
+        
+
+        var numberBuffer = new Queue<char>();
+
         foreach (var item in infix)
         {
             if (IsOperator(item))
             {
+
+                if (numberBuffer.Count > 0)
+                {
+                    string num = "";
+                    while (numberBuffer.Count > 0)
+                    {
+                        num += numberBuffer.Dequeue();
+                    }
+                    postFix.Enqueue(num);
+                }
+
                 if (stack.Count == 0)
                 {
                     stack.Push(item);
@@ -26,7 +45,7 @@ public class Evaluator
                     {
                         do
                         {
-                            postFix += stack.Pop();
+                            postFix.Enqueue(stack.Pop().ToString()); 
                         } while (stack.Peek() != '(');
                         stack.Pop();
                     }
@@ -38,7 +57,7 @@ public class Evaluator
                         }
                         else
                         {
-                            postFix += stack.Pop();
+                            postFix.Enqueue(stack.Pop().ToString());
                             stack.Push(item);
                         }
                     }
@@ -46,13 +65,25 @@ public class Evaluator
             }
             else
             {
-                postFix += item;
+                numberBuffer.Enqueue(item);
             }
         }
+
+        if (numberBuffer.Count > 0)
+        {
+            string num = "";
+            while (numberBuffer.Count > 0)
+            {
+                num += numberBuffer.Dequeue();
+            }
+            postFix.Enqueue(num);
+        }
+
         while (stack.Count > 0)
         {
-            postFix += stack.Pop();
+            postFix.Enqueue(stack.Pop().ToString());
         }
+        
         return postFix;
     }
 
@@ -78,16 +109,17 @@ public class Evaluator
         _ => throw new Exception("Sintax error."),
     };
 
-    private static double EvaluatePostfix(string postfix)
+    private static double EvaluatePostfix(Queue<string> postfix)
     {
         var stack = new Stack<double>();
-        foreach (char item in postfix)
+        
+        foreach (string item in postfix)
         {
-            if (IsOperator(item))
+            if (item.Length == 1 && IsOperator(item[0]))
             {
                 var b = stack.Pop();
                 var a = stack.Pop();
-                stack.Push(item switch
+                stack.Push(item[0] switch
                 {
                     '+' => a + b,
                     '-' => a - b,
@@ -99,7 +131,8 @@ public class Evaluator
             }
             else
             {
-                stack.Push(double.Parse(item.ToString()));
+
+                stack.Push(double.Parse(item, CultureInfo.InvariantCulture));
             }
         }
         return stack.Pop();
